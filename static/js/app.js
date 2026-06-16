@@ -10,6 +10,7 @@ let state = {
 // DOM Elements
 const refreshBtn = document.getElementById('refresh-btn');
 const refreshIcon = refreshBtn.querySelector('.refresh-icon');
+const exportCsvBtn = document.getElementById('export-csv-btn');
 const feedContent = document.getElementById('feed-content');
 const searchInput = document.getElementById('search-input');
 const categoryTabs = document.getElementById('category-tabs');
@@ -35,6 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
     // Refresh Button Click
     refreshBtn.addEventListener('click', fetchReleaseNotes);
+
+    // Export CSV Button Click
+    exportCsvBtn.addEventListener('click', exportFeedToCSV);
 
     // Search Input
     searchInput.addEventListener('input', (e) => {
@@ -198,9 +202,9 @@ function renderFeed() {
                     ${entry.html}
                 </div>
                 <div class="card-footer">
-                    <span class="card-actions-hint">
-                        <i class="fa-solid fa-circle-info"></i> Click card to draft tweet
-                    </span>
+                    <button class="card-copy-btn" data-id="${entry.id}">
+                        <i class="fa-regular fa-copy copy-icon"></i> <span>Copy</span>
+                    </button>
                     <button class="card-tweet-trigger" data-id="${entry.id}">
                         <i class="fa-brands fa-x-twitter"></i> Select to Tweet
                     </button>
@@ -225,6 +229,13 @@ function renderFeed() {
         triggerBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // prevent card click bubble
             selectCardForTweet(entry);
+        });
+
+        // Copy button inside card
+        const copyBtn = card.querySelector('.card-copy-btn');
+        copyBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // prevent card click bubble
+            copyEntryToClipboard(entry, copyBtn);
         });
     });
 }
@@ -325,4 +336,63 @@ function escapeHtml(unsafe) {
          .replace(/>/g, "&gt;")
          .replace(/"/g, "&quot;")
          .replace(/'/g, "&#039;");
+}
+
+// Copy release note contents to user's clipboard
+function copyEntryToClipboard(entry, btn) {
+    const textToCopy = `📢 BigQuery ${entry.type} (${entry.date}):\n${entry.text}\n\nRead details: ${entry.link}`;
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const icon = btn.querySelector('.copy-icon');
+        const textSpan = btn.querySelector('span');
+        
+        icon.className = 'fa-solid fa-check copy-icon';
+        textSpan.textContent = 'Copied!';
+        btn.style.color = 'var(--color-feature)';
+        
+        setTimeout(() => {
+            icon.className = 'fa-regular fa-copy copy-icon';
+            textSpan.textContent = 'Copy';
+            btn.style.color = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+}
+
+// Export currently active/filtered feed entries to CSV
+function exportFeedToCSV() {
+    if (state.filteredEntries.length === 0) {
+        alert('No entries available to export.');
+        return;
+    }
+    
+    const csvRows = [];
+    // CSV Header row
+    csvRows.push(["ID", "Date", "Type", "Description", "Link"].map(h => `"${h.replace(/"/g, '""')}"`).join(","));
+    
+    // Add data rows
+    state.filteredEntries.forEach(entry => {
+        const row = [
+            entry.id,
+            entry.date,
+            entry.type,
+            entry.text.replace(/\r?\n|\r/g, ' '),
+            entry.link
+        ];
+        csvRows.push(row.map(val => `"${val.replace(/"/g, '""')}"`).join(","));
+    });
+    
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    const filename = `bigquery_release_notes_${state.activeCategory}_${new Date().toISOString().slice(0,10)}.csv`;
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
