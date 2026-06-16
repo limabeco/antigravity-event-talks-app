@@ -10,6 +10,7 @@ let state = {
 // DOM Elements
 const refreshBtn = document.getElementById('refresh-btn');
 const refreshIcon = refreshBtn.querySelector('.refresh-icon');
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
 const exportCsvBtn = document.getElementById('export-csv-btn');
 const feedContent = document.getElementById('feed-content');
 const searchInput = document.getElementById('search-input');
@@ -30,12 +31,16 @@ const linkCardTitle = document.getElementById('link-card-title');
 document.addEventListener('DOMContentLoaded', () => {
     fetchReleaseNotes();
     setupEventListeners();
+    initializeTheme();
 });
 
 // Setup Event Listeners
 function setupEventListeners() {
     // Refresh Button Click
     refreshBtn.addEventListener('click', fetchReleaseNotes);
+
+    // Theme Toggle Click
+    themeToggleBtn.addEventListener('click', toggleTheme);
 
     // Export CSV Button Click
     exportCsvBtn.addEventListener('click', exportFeedToCSV);
@@ -395,4 +400,28 @@ function exportFeedToCSV() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// Initialize light/dark theme based on user's preference
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+        const icon = themeToggleBtn.querySelector('.theme-icon');
+        icon.className = 'fa-solid fa-sun theme-icon';
+    }
+}
+
+// Toggle page theme and store preference
+function toggleTheme() {
+    const isLightMode = document.body.classList.toggle('light-mode');
+    const icon = themeToggleBtn.querySelector('.theme-icon');
+    
+    if (isLightMode) {
+        localStorage.setItem('theme', 'light');
+        icon.className = 'fa-solid fa-sun theme-icon';
+    } else {
+        localStorage.setItem('theme', 'dark');
+        icon.className = 'fa-solid fa-moon theme-icon';
+    }
 }
